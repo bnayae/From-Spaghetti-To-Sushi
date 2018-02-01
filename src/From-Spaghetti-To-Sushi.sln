@@ -1,11 +1,58 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2010
+VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Hosts", "Hosts", "{9A4A1225-8298-4AE6-8B60-E808873523E2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Contracts", "Contracts", "{E2E8CFBF-0399-461C-AFD0-287B4360CC84}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Implementations", "Implementations", "{E03BD6C3-C84B-4471-8EF1-C5AE6068E21F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImageProcessing.Contracts", "Contracts\ImageProcessing.Contracts\ImageProcessing.Contracts.csproj", "{C18B8076-02DF-4645-8A19-97BE6DAF5D61}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{5CFDD0CD-78DA-4E85-840A-DAD21E2FCB76}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageProcessing.UnitTests", "Tests\ImageProcessing.UnitTests\ImageProcessing.UnitTests.csproj", "{F270717F-978C-44FA-B894-B4AAFC03AF2D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImageProcessing.Commons", "Implementations\ImageProcessing.Commons\ImageProcessing.Commons.csproj", "{CE74A394-64A4-4F62-9FB1-1D31F076BA2A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Providers", "Providers", "{FF70F012-0E8D-4EAB-8786-DBE2821B91E5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageProcessing.Providers.ImageSharp", "Implementations\Providers\ImageProcessing.Providers.ImageSharp\ImageProcessing.Providers.ImageSharp.csproj", "{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C18B8076-02DF-4645-8A19-97BE6DAF5D61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C18B8076-02DF-4645-8A19-97BE6DAF5D61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C18B8076-02DF-4645-8A19-97BE6DAF5D61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C18B8076-02DF-4645-8A19-97BE6DAF5D61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F270717F-978C-44FA-B894-B4AAFC03AF2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F270717F-978C-44FA-B894-B4AAFC03AF2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F270717F-978C-44FA-B894-B4AAFC03AF2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F270717F-978C-44FA-B894-B4AAFC03AF2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE74A394-64A4-4F62-9FB1-1D31F076BA2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE74A394-64A4-4F62-9FB1-1D31F076BA2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE74A394-64A4-4F62-9FB1-1D31F076BA2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE74A394-64A4-4F62-9FB1-1D31F076BA2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C18B8076-02DF-4645-8A19-97BE6DAF5D61} = {E2E8CFBF-0399-461C-AFD0-287B4360CC84}
+		{F270717F-978C-44FA-B894-B4AAFC03AF2D} = {5CFDD0CD-78DA-4E85-840A-DAD21E2FCB76}
+		{CE74A394-64A4-4F62-9FB1-1D31F076BA2A} = {E03BD6C3-C84B-4471-8EF1-C5AE6068E21F}
+		{FF70F012-0E8D-4EAB-8786-DBE2821B91E5} = {E03BD6C3-C84B-4471-8EF1-C5AE6068E21F}
+		{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455} = {FF70F012-0E8D-4EAB-8786-DBE2821B91E5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0AFD0A9C-B053-4CE0-8907-9D0320E02836}

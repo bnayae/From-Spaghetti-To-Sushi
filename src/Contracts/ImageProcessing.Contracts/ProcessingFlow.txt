@@ -1,0 +1,13 @@
+﻿Build
+
++-------+     +---------------+
+|a ---- + ->  |b ---> c ---> d|    
++-------+     +---------------+            
+
+
+
+
+- each pipe know the previous
+- Execute start at the last pipe
+	- when optimized jump to the previous represent the prev non optimized pipe
+    
