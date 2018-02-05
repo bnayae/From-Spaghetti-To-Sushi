@@ -67,6 +67,10 @@
       <Project>{c18b8076-02df-4645-8a19-97be6daf5d61}</Project>
       <Name>ImageProcessing.Contracts</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Contracts\Setting.Contracts\Setting.Contracts.csproj">
+      <Project>{e4932c7a-67d2-4d80-8e02-cfbe4ae70838}</Project>
+      <Name>Setting.Contracts</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Implementations\ImageProcessing.Commons\ImageProcessing.Commons.csproj">
       <Project>{ce74a394-64a4-4f62-9fb1-1d31f076ba2a}</Project>
       <Name>ImageProcessing.Commons</Name>

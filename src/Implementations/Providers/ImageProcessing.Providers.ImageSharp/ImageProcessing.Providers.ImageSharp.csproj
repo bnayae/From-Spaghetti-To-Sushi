@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Contracts\ImageProcessing.Contracts\ImageProcessing.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Contracts\Setting.Contracts\Setting.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
