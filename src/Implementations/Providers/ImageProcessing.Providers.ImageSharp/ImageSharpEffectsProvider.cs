@@ -1,5 +1,6 @@
 ﻿using ImageProcessing.Contracts;
 using ImageSharp;
+using ImageSharp.Formats;
 using ImageSharp.Processing;
 using Setting.Contracts;
 using System;
@@ -17,6 +18,11 @@ namespace ImageProcessing.Providers
 
         public ImageSharpEffectsProvider(ISetting setting)
         {
+            var cfg = Configuration.Default;
+            cfg.AddImageFormat(new JpegFormat());
+            cfg.AddImageFormat(new PngFormat());
+            cfg.AddImageFormat(new GifFormat());
+            cfg.AddImageFormat(new BmpFormat());
             _settingTask = setting.GetAsync<ProviderSetting>(ProviderSetting.Key);
         }
 
@@ -36,6 +42,8 @@ namespace ImageProcessing.Providers
         public bool CanProcess(in IEffectParameters parameters)
         {
             if (parameters is ResizeEffectParameters)
+                return true;
+            if (parameters is GrayscaleEffectParameters)
                 return true;
             return false;
         }
@@ -60,6 +68,8 @@ namespace ImageProcessing.Providers
             switch (parameters)
             {
                 case ResizeEffectParameters p:
+                    return Executer.Create(parent, p, _settingTask);
+                case GrayscaleEffectParameters p:
                     return Executer.Create(parent, p, _settingTask);
                 default:
                     throw new NotImplementedException();
@@ -188,15 +198,32 @@ namespace ImageProcessing.Providers
             /// <returns></returns>
             public override async Task<Image<Color>> DelegateExecutionAsync(Stream inputStream)
             {
-                var optimizedParent = Parent as Executer;
-                if (optimizedParent == null)
+                #region Image<Color> image = ...
+
+                Image<Color> image;
+                if (Parent == null)
+                    image = new Image(inputStream);
+                else
                 {
-                    using (var memStream = new MemoryStream())
+                    var optimizedParent = Parent as Executer;
+                    if (optimizedParent == null)
                     {
-                        await ExecuteNoneOptimizedAsync(inputStream, memStream);
+                        #region image = await Parent.ExecuteAsync(inputStream, memStream)
+
+                        using (var memStream = new MemoryStream())
+                        {
+                            await Parent.ExecuteAsync(inputStream, memStream);
+                            memStream.Position = 0;
+                            image = new Image(memStream);
+                        }
+
+                        #endregion // image = await Parent.ExecuteAsync(inputStream, memStream)
                     }
+                    else
+                        image = await optimizedParent.DelegateExecutionAsync(inputStream);
                 }
-                Image<Color> image = await optimizedParent.DelegateExecutionAsync(inputStream);
+
+                #endregion // Image<Color> image = ...
 
                 switch (_parameters)
                 {
@@ -205,7 +232,7 @@ namespace ImageProcessing.Providers
                             image = DoResize(image, resize);
                             break;
                         }
-                    case GrayscalEffectParameters grayscale:
+                    case GrayscaleEffectParameters grayscale:
                         {
                             image = DoGrayscale(image);
                             break;
@@ -285,6 +312,7 @@ namespace ImageProcessing.Providers
                     disp = afterManipStream;
                     // delegate the call to the parent and use it's output as input
                     await Parent.ExecuteAsync(inputStream, afterManipStream);
+                    afterManipStream.Position = 0;
                 }
 
                 #endregion // await Parent.ExecuteAsync(inputStream, afterManipStream); disp = ...
@@ -304,7 +332,7 @@ namespace ImageProcessing.Providers
                                     }
                                 }
                                 break;
-                            case GrayscalEffectParameters grayscale:
+                            case GrayscaleEffectParameters grayscale:
                                 {
                                     using (var maniped = DoGrayscale(image))
                                     using (maniped.Save(outputStream))

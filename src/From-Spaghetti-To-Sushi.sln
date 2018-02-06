@@ -21,7 +21,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Providers", "Providers", "{
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImageProcessing.Providers.ImageSharp", "Implementations\Providers\ImageProcessing.Providers.ImageSharp\ImageProcessing.Providers.ImageSharp.csproj", "{C9CABDC6-B2C4-4A89-9B03-3B75CEAE4455}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Setting.Contracts", "Contracts\Setting.Contracts\Setting.Contracts.csproj", "{E4932C7A-67D2-4D80-8E02-CFBE4AE70838}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Setting.Contracts", "Contracts\Setting.Contracts\Setting.Contracts.csproj", "{E4932C7A-67D2-4D80-8E02-CFBE4AE70838}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{385D7EFE-4AF0-4463-9DBC-981E95A498B8}"
+	ProjectSection(SolutionItems) = preProject
+		Links.txt = Links.txt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
