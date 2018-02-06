@@ -73,7 +73,7 @@ namespace ImageProcessing.UnitTests
         #region BasicPipeline_Test
 
         [TestMethod]
-        public async Task BasicPipeline_Test()
+        public async Task EffectBuilding_BasicPipeline_Test()
         {
             // arrange 
 
@@ -94,7 +94,7 @@ namespace ImageProcessing.UnitTests
         #region BasicPipeline_Plus_Test
 
         [TestMethod]
-        public async Task BasicPipeline_Plus_Test()
+        public async Task EffectBuilding_BasicPipeline_Plus_Test()
         {
             // arrange 
 

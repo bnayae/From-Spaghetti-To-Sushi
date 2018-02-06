@@ -8,16 +8,18 @@ namespace ImageProcessing.Contracts
     /// in order to find the IImageManipPine 
     /// which can accept (know how to work with) the parameter type 
     /// </summary>
-    public struct GrayscalEffectParameters : 
+    public struct GrayscaleEffectParameters :
         IEffectParameters,
-        IEquatable<GrayscalEffectParameters>
+        IEquatable<GrayscaleEffectParameters>
     {
+        public static IEffectParameters Default = new GrayscaleEffectParameters();
+        
         #region Equality and Hash Code
 
-        public bool Equals(GrayscalEffectParameters other) => true;
+        public bool Equals(GrayscaleEffectParameters other) => true;
 
         public override bool Equals(object obj) =>
-            obj is GrayscalEffectParameters;
+            obj is GrayscaleEffectParameters;
 
         public override int GetHashCode() => 0;
 
