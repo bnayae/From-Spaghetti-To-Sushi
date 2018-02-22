@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using FakeItEasy;
 using ImageProcessing.Commons;
 using ImageProcessing.Contracts;
+using ImageProcessing.Providers;
+using ImageSharp.Processing;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ImageProcessing.UnitTests
@@ -13,9 +15,11 @@ namespace ImageProcessing.UnitTests
     {
         #region IEffectPipelineExecuter _executerA, _executerB, _executerC
 
-        private IEffectPipelineExecuter _executerA = A.Fake<IEffectPipelineExecuter>();
-        private IEffectPipelineExecuter _executerB = A.Fake<IEffectPipelineExecuter>();
-        private IEffectPipelineExecuter _executerC = A.Fake<IEffectPipelineExecuter>();
+        private EffectPipelineExecuterBase _executerA = A.Fake<EffectPipelineExecuterBase>();
+        private EffectPipelineExecuterBase _executerB = A.Fake<EffectPipelineExecuterBase>();
+        private EffectPipelineExecuterBase _executerC = A.Fake<EffectPipelineExecuterBase>();
+        private EffectPipelineExecuterBase _executerGrayscale = A.Fake<EffectPipelineExecuterBase>();
+        private EffectPipelineExecuterBase _executerResize = A.Fake<EffectPipelineExecuterBase>();
 
         #endregion // IEffectPipelineExecuter _executerA, _executerB, _executerC
 
@@ -48,23 +52,34 @@ namespace ImageProcessing.UnitTests
                     .Returns(true);
             A.CallTo(() => _providerFactory.CanProcess(_parametersC))
                     .Returns(true);
+            A.CallTo(() => _providerFactory.CanProcess(A<IEffectParameters>.That.Matches(e => e is GrayscaleEffectParameters)))
+                    .Returns(true);
+            A.CallTo(() => _providerFactory.CanProcess(A<IEffectParameters>.That.Matches(e => e is ResizeEffectParameters)))
+                    .Returns(true);
 
             #endregion // CanProcess
 
             #region CreateExecutor
 
             A.CallTo(() => _providerFactory.CreateExecutor(null, _parametersA))
-                    .ReturnsLazily<IEffectPipelineExecuter, IEffectPipelineExecuter, IEffectParameters>(
+                    .ReturnsLazily<EffectPipelineExecuterBase, EffectPipelineExecuterBase, IEffectParameters>(
                         (e, p) => _executerA);
             A.CallTo(() => _providerFactory.CreateExecutor(_executerA, _parametersB))
-                    .ReturnsLazily<IEffectPipelineExecuter, IEffectPipelineExecuter, IEffectParameters>(
+                    .ReturnsLazily<EffectPipelineExecuterBase, EffectPipelineExecuterBase, IEffectParameters>(
                         (e, p) => _executerB);
             A.CallTo(() => _providerFactory.CreateExecutor(_executerB, _parametersC))
-                    .ReturnsLazily<IEffectPipelineExecuter, IEffectPipelineExecuter, IEffectParameters>(
+                    .ReturnsLazily<EffectPipelineExecuterBase, EffectPipelineExecuterBase, IEffectParameters>(
                         (e, p) => _executerC);
 
+            A.CallTo(() => _providerFactory.CreateExecutor(A<EffectPipelineExecuterBase>.Ignored, A<IEffectParameters>.That.Matches(e => e is GrayscaleEffectParameters)))
+                    .ReturnsLazily<EffectPipelineExecuterBase, EffectPipelineExecuterBase, IEffectParameters>(
+                        (e, p) => _executerGrayscale);
+            A.CallTo(() => _providerFactory.CreateExecutor(A<EffectPipelineExecuterBase>.Ignored, A<IEffectParameters>.That.Matches(e => e is ResizeEffectParameters)))
+                    .ReturnsLazily<EffectPipelineExecuterBase, EffectPipelineExecuterBase, IEffectParameters>(
+                        (e, p) => _executerResize);
+
             #endregion // CreateExecutor
-            A.CallTo(() => _executerC.ExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
+            A.CallTo(() => _executerC.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
                     .ReturnsLazily(() => Task.CompletedTask);
         }
 
@@ -79,7 +94,7 @@ namespace ImageProcessing.UnitTests
 
             // act 
 
-            IEffectPipelineExecuter execution =
+            EffectPipelineExecuterBase execution =
                 _builderFactory.Create(_parametersA)
                            .Append(_parametersB)
                            .Append(_parametersC)
@@ -90,6 +105,44 @@ namespace ImageProcessing.UnitTests
         }
 
         #endregion // BasicPipeline_Test
+
+        #region BasicPipeline_Frendly_Test
+
+        [TestMethod]
+        public async Task EffectBuilding_BasicPipeline_Frendly_Test()
+        {
+            // arrange 
+
+            // act 
+
+            EffectPipelineExecuterBase execution =
+                _builderFactory.Create()
+                           .Grayscale()
+                           //.Append(new GrayscaleEffectParameters())
+                           //.Grayscale(GrayscaleMode.Bt709) // this one will test the provider (not the builder)
+                           //.Append(new GrayscaleModeEffectParameters(GrayscaleMode.Bt709))
+                           .Resize(100, 100)
+                           //.Append(new ResizeEffectParameters(100, 100))
+                           .Build();
+
+            var srm = A.Fake<Stream>();
+            await execution.ExecuteAsync(srm, srm)
+                         .ConfigureAwait(false);
+
+            // asserts
+            A.CallTo(() => _providerFactory.CanProcess(A<IEffectParameters>.That.Matches(e => e is GrayscaleEffectParameters)))
+                    .MustHaveHappened(Repeated.Exactly.Once);
+            A.CallTo(() => _providerFactory.CanProcess(A<IEffectParameters>.That.Matches(e => e is ResizeEffectParameters)))
+                    .MustHaveHappened(Repeated.Exactly.Once);
+
+            Assert.AreSame(execution, _executerResize);
+            A.CallTo(() => _providerFactory.CreateExecutor(A<EffectPipelineExecuterBase>.Ignored, A<IEffectParameters>.That.Matches(e => e is GrayscaleEffectParameters)))
+                    .MustHaveHappened(Repeated.Exactly.Once);
+            A.CallTo(() => _providerFactory.CreateExecutor(A<EffectPipelineExecuterBase>.Ignored, A<IEffectParameters>.That.Matches(e => e is ResizeEffectParameters)))
+                    .MustHaveHappened(Repeated.Exactly.Once);
+        }
+
+        #endregion // EffectBuilding_BasicPipeline_Frendly_Test
 
         #region BasicPipeline_Plus_Test
 
@@ -102,7 +155,7 @@ namespace ImageProcessing.UnitTests
 
             var builder = _builderFactory.Create(_parametersA);
             builder = builder + _parametersB + _parametersC;
-            IEffectPipelineExecuter execution = builder.Build();
+            EffectPipelineExecuterBase execution = builder.Build();
 
             await CheckBasicPipelineAsync(execution);
         }
@@ -111,7 +164,7 @@ namespace ImageProcessing.UnitTests
 
         #region CheckBasicPipelineAsync
 
-        private async Task CheckBasicPipelineAsync(IEffectPipelineExecuter execution)
+        private async Task CheckBasicPipelineAsync(EffectPipelineExecuterBase execution)
         {
             // act
             var srm = A.Fake<Stream>();
@@ -128,18 +181,18 @@ namespace ImageProcessing.UnitTests
                 .MustHaveHappened(Repeated.Exactly.Once);
             A.CallTo(() => _providerFactory.CreateExecutor(_executerB, _parametersC))
                 .MustHaveHappened(Repeated.Exactly.Once);
-            A.CallTo(() => _providerFactory.CreateExecutor(A<IEffectPipelineExecuter>.Ignored, A<IEffectParameters>.Ignored))
+            A.CallTo(() => _providerFactory.CreateExecutor(A<EffectPipelineExecuterBase>.Ignored, A<IEffectParameters>.Ignored))
                 .MustHaveHappened(Repeated.Exactly.Times(3));
 
             #endregion // CreateExecutor
 
             #region ExecuteAsync
 
-            A.CallTo(() => _executerA.ExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
+            A.CallTo(() => _executerA.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
                 .MustHaveHappened(Repeated.Never);
-            A.CallTo(() => _executerB.ExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
+            A.CallTo(() => _executerB.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
                 .MustHaveHappened(Repeated.Never);
-            A.CallTo(() => _executerC.ExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
+            A.CallTo(() => _executerC.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
                 .MustHaveHappened(Repeated.Exactly.Once);
 
             #endregion // ExecuteAsync

@@ -12,7 +12,7 @@ namespace ImageProcessing.Contracts
         IEffectParameters,
         IEquatable<GrayscaleEffectParameters>
     {
-        public static IEffectParameters Default = new GrayscaleEffectParameters();
+        public readonly static IEffectParameters Default = new GrayscaleEffectParameters();
         
         #region Equality and Hash Code
 

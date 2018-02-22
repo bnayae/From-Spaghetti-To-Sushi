@@ -1,5 +1,6 @@
 ﻿using ImageProcessing.Contracts;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -14,8 +15,7 @@ namespace ImageProcessing.Commons
     /// <seealso cref="ImageProcessing.Contracts.EffectBuilderBase" />
     public class EffectBuilder : EffectBuilderBase
     {
-        private readonly IEffectParameters _parameters;
-        private readonly IEffectPipelineExecuter _executor;
+        private readonly EffectPipelineExecuterBase _executor;
         private readonly IEffectProviderFactory[] _providers;
 
         #region Ctor
@@ -27,12 +27,10 @@ namespace ImageProcessing.Commons
         /// <param name="parameters">The parameters.</param>
         /// <param name="provider">The provider.</param>
         internal EffectBuilder(
-            IEffectPipelineExecuter executor,
-            in IEffectParameters parameters,
+            EffectPipelineExecuterBase executor,
             params IEffectProviderFactory[] provider)
         {
             _executor = executor;
-            _parameters = parameters;
             _providers = provider;
         }
 
@@ -64,14 +62,17 @@ namespace ImageProcessing.Commons
         /// <param name="providers">The providers.</param>
         /// <returns></returns>
         internal static EffectBuilder Create(
-            in IEffectPipelineExecuter parent, // TODO: use for optimization
+            in EffectPipelineExecuterBase parent, // TODO: use for optimization
             in IEffectParameters parameters, 
             params IEffectProviderFactory[] providers)
         {
-            IEffectParameters prms = parameters;
+            IEffectParameters prms = parameters; 
             IEffectProviderFactory provider = providers.First(m => m.CanProcess(prms)); // in not supported by delegate
-            IEffectPipelineExecuter executor = provider.CreateExecutor(parent, parameters);
-            var builder = new EffectBuilder(executor, parameters, providers);
+            prms = parameters; // work around for the mock
+            EffectPipelineExecuterBase executor = provider.CreateExecutor(parent, prms);
+            var builder = new EffectBuilder(executor, providers);
+            if (parameters == null)
+                throw new Exception();
             return builder;
         }
 
@@ -84,7 +85,7 @@ namespace ImageProcessing.Commons
         /// Builds effect's pipeline executer.
         /// </summary>
         /// <returns></returns>
-        public override IEffectPipelineExecuter Build() => _executor;
+        public override EffectPipelineExecuterBase Build() => _executor;
 
         #endregion // Build
     }

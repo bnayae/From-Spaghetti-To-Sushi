@@ -2,6 +2,7 @@
 using ImageSharp;
 using ImageSharp.Formats;
 using ImageSharp.Processing;
+using Serilog;
 using Setting.Contracts;
 using System;
 using System.Collections.Generic;
@@ -10,13 +11,18 @@ using System.Threading.Tasks;
 
 namespace ImageProcessing.Providers
 {
-    public class ImageSharpEffectsProvider : IEffectProviderFactory
+    internal class ImageSharpEffectsProvider : IEffectProviderFactory
     {
         private readonly Task<ProviderSetting> _settingTask;
+        private readonly IMetricReporter _metric;
+        private readonly ILogger _logger;
 
         #region Ctor
 
-        public ImageSharpEffectsProvider(ISetting setting)
+        public ImageSharpEffectsProvider(
+            ISetting setting,
+            IMetricReporter metric,
+            ILogger logger)
         {
             var cfg = Configuration.Default;
             cfg.AddImageFormat(new JpegFormat());
@@ -24,6 +30,8 @@ namespace ImageProcessing.Providers
             cfg.AddImageFormat(new GifFormat());
             cfg.AddImageFormat(new BmpFormat());
             _settingTask = setting.GetAsync<ProviderSetting>(ProviderSetting.Key);
+            _metric = metric;
+            _logger = logger;
         }
 
         #endregion // Ctor
@@ -45,6 +53,8 @@ namespace ImageProcessing.Providers
                 return true;
             if (parameters is GrayscaleEffectParameters)
                 return true;
+            if (parameters is GrayscaleModeEffectParameters)
+                return true;
             return false;
         }
 
@@ -61,16 +71,18 @@ namespace ImageProcessing.Providers
         /// refer to previous of the first pipe in the optimized sequence (previous of the previous).
         /// </param>
         /// <param name="parameters">The parameters.</param>
-        public IEffectPipelineExecuter CreateExecutor(
-            in IEffectPipelineExecuter parent,
+        public EffectPipelineExecuterBase CreateExecutor(
+            in EffectPipelineExecuterBase parent,
             in IEffectParameters parameters)
         {
             switch (parameters)
             {
                 case ResizeEffectParameters p:
-                    return Executer.Create(parent, p, _settingTask);
+                    return Executer.Create(parent, p, _settingTask, _metric, _logger);
                 case GrayscaleEffectParameters p:
-                    return Executer.Create(parent, p, _settingTask);
+                    return Executer.Create(parent, p, _settingTask, _metric, _logger);
+                case GrayscaleModeEffectParameters p:
+                    return Executer.Create(parent, p, _settingTask, _metric, _logger);
                 default:
                     throw new NotImplementedException();
             }
@@ -83,8 +95,15 @@ namespace ImageProcessing.Providers
         /// <summary>
         /// Factory for IEffectPipelineExecuter implementation
         /// </summary>
-        private abstract class Executer
+        private abstract class Executer: EffectPipelineExecuterBase
         {
+            public Executer(
+                    IMetricReporter metric,
+                    ILogger logger)
+                :base(metric, logger)
+            {
+
+            }
             #region Create
 
             /// <summary>
@@ -98,12 +117,19 @@ namespace ImageProcessing.Providers
             /// <param name="settingTask">The setting task.</param>
             /// <returns></returns>
             public static Executer<T> Create<T>(
-                                in IEffectPipelineExecuter parent,
+                                in EffectPipelineExecuterBase parent,
                                 in T parameters,
-                                in Task<ProviderSetting> settingTask)
+                                in Task<ProviderSetting> settingTask,
+                                IMetricReporter metric,
+                                ILogger logger)
                 where T : IEffectParameters
             {
-                return new Executer<T>(parent, parameters, settingTask);
+                return new Executer<T>(
+                    parent,
+                    parameters,
+                    settingTask,
+                    metric,
+                    logger);
             }
 
             #endregion // Create
@@ -120,7 +146,7 @@ namespace ImageProcessing.Providers
             #endregion // DelegateExecutionAsync
         }
 
-        private class Executer<T> : Executer, IEffectPipelineExecuter
+        private class Executer<T> : Executer
             where T : IEffectParameters
         {
             private readonly Task<ProviderSetting> _settingTask;
@@ -137,9 +163,12 @@ namespace ImageProcessing.Providers
             /// <param name="parameters">The parameters.</param>
             /// <param name="settingTask">The setting task.</param>
             public Executer(
-                in IEffectPipelineExecuter parent,
+                in EffectPipelineExecuterBase parent,
                 in T parameters,
-                in Task<ProviderSetting> settingTask)
+                in Task<ProviderSetting> settingTask,
+                IMetricReporter metric,
+                ILogger logger)
+                :base(metric, logger)
             {
                 _parameters = parameters;
                 Parent = parent;
@@ -153,7 +182,7 @@ namespace ImageProcessing.Providers
             /// <summary>
             /// The previous executor (in the pipe-line).
             /// </summary>
-            public IEffectPipelineExecuter Parent { get; }
+            public EffectPipelineExecuterBase Parent { get; }
 
             #endregion // Parent
 
@@ -181,9 +210,9 @@ namespace ImageProcessing.Providers
             /// </summary>
             /// <param name="image">The image.</param>
             /// <returns></returns>
-            private static Image<Color> DoGrayscale(Image<Color> image)
+            private static Image<Color> DoGrayscale(Image<Color> image, GrayscaleMode mode = GrayscaleMode.Bt601)
             {
-                image = image.Grayscale(GrayscaleMode.Bt601);
+                image = image.Grayscale(mode);
                 return image;
             }
 
@@ -237,6 +266,11 @@ namespace ImageProcessing.Providers
                             image = DoGrayscale(image);
                             break;
                         }
+                    case GrayscaleModeEffectParameters grayscale:
+                        {
+                            image = DoGrayscale(image, grayscale.Mode);
+                            break;
+                        }
                     default:
                         throw new NotImplementedException();
                 }
@@ -255,7 +289,7 @@ namespace ImageProcessing.Providers
             /// <param name="inputStream">The input image stream.</param>
             /// <param name="outputStream">The output image stream.</param>
             /// <returns></returns>
-            public async Task ExecuteAsync(Stream inputStream, Stream outputStream)
+            protected override async Task OnExecuteAsync(Stream inputStream, Stream outputStream)
             {
                 ProviderSetting setting = await _settingTask;
                 if (setting.Optimized)
@@ -335,6 +369,14 @@ namespace ImageProcessing.Providers
                             case GrayscaleEffectParameters grayscale:
                                 {
                                     using (var maniped = DoGrayscale(image))
+                                    using (maniped.Save(outputStream))
+                                    {
+                                    }
+                                }
+                                break;
+                            case GrayscaleModeEffectParameters grayscale:
+                                {
+                                    using (var maniped = DoGrayscale(image, grayscale.Mode))
                                     using (maniped.Save(outputStream))
                                     {
                                     }

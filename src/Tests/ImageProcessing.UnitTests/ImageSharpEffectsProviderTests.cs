@@ -7,6 +7,7 @@ using FakeItEasy;
 using ImageProcessing.Contracts;
 using ImageProcessing.Providers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Serilog;
 using Setting.Contracts;
 
 namespace ImageProcessing.UnitTests
@@ -15,10 +16,12 @@ namespace ImageProcessing.UnitTests
     public class ImageSharpEffectsProviderTests
     {
         private ISetting _setting = A.Fake<ISetting>();
+        private ILogger _logger = A.Fake<ILogger>();
+        private IMetricReporter _metric = A.Fake<IMetricReporter>();
 
-        private IEffectPipelineExecuter _firstFakeExecuter = A.Fake<IEffectPipelineExecuter>();
-        private IEffectPipelineExecuter _executerA;
-        private IEffectPipelineExecuter _executerB;
+        private EffectPipelineExecuterBase _firstFakeExecuter = A.Fake<EffectPipelineExecuterBase>();
+        private EffectPipelineExecuterBase _executerA;
+        private EffectPipelineExecuterBase _executerB;
         private ResizeEffectParameters _resizeParameters = new ResizeEffectParameters(50, 60);
 
         #region Setup
@@ -27,7 +30,7 @@ namespace ImageProcessing.UnitTests
         public void Setup()
         {
             // arrange
-            A.CallTo(() => _firstFakeExecuter.ExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
+            A.CallTo(() => _firstFakeExecuter.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
                 .ReturnsLazily<Task, Stream, Stream>((input, output) =>
                                                     input.CopyToAsync(output));
         }
@@ -84,8 +87,8 @@ namespace ImageProcessing.UnitTests
 
         private ImageSharpEffectsProvider InitProvider(bool withFirstFake = true)
         {
-            var effectProvider = new ImageSharpEffectsProvider(_setting);
-            IEffectPipelineExecuter first = withFirstFake ? _firstFakeExecuter : null;
+            var effectProvider = new ImageSharpEffectsProvider(_setting, _metric, _logger);
+            EffectPipelineExecuterBase first = withFirstFake ? _firstFakeExecuter : null;
             _executerA = effectProvider.CreateExecutor(first, _resizeParameters);
             _executerB = effectProvider.CreateExecutor(_executerA, GrayscaleEffectParameters.Default);
             return effectProvider;
@@ -139,12 +142,12 @@ namespace ImageProcessing.UnitTests
                 // assert
                 if (withFirstFake)
                 {
-                    A.CallTo(() => _firstFakeExecuter.ExecuteAsync(inputStream, A<Stream>.Ignored))
+                    A.CallTo(() => _firstFakeExecuter.OnExecuteAsync(inputStream, A<Stream>.Ignored))
                         .MustHaveHappened(Repeated.Exactly.Once);
                 }
                 else
                 {
-                    A.CallTo(() => _firstFakeExecuter.ExecuteAsync(inputStream, A<Stream>.Ignored))
+                    A.CallTo(() => _firstFakeExecuter.OnExecuteAsync(inputStream, A<Stream>.Ignored))
                         .MustHaveHappened(Repeated.Never);
                 }
                 Assert.AreEqual(_resizeParameters.Width, affectedImage.Width);

@@ -4,3 +4,7 @@ https://blogs.msdn.microsoft.com/dotnet/2017/01/19/net-core-image-processing/
 Random Images
 https://source.unsplash.com/random/1200x1200
 http://lorempixel.com/1200/1200/animals/
+
+Git Fork Update
+https://help.github.com/articles/configuring-a-remote-for-a-fork/
+https://help.github.com/articles/syncing-a-fork/

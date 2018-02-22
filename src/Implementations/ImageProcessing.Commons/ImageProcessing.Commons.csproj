@@ -13,6 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Serilog" Version="2.7.1-dev-00960" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Contracts\ImageProcessing.Contracts\ImageProcessing.Contracts.csproj" />
   </ItemGroup>
 

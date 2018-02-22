@@ -12,4 +12,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="2.7.1-dev-00960" />
+  </ItemGroup>
+
 </Project>

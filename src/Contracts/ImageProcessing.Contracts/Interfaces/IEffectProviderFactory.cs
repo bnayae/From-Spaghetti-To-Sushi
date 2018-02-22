@@ -28,8 +28,8 @@ namespace ImageProcessing.Contracts
         /// refer to previous of the first pipe in the optimized sequence (previous of the previous).
         /// </param>
         /// <param name="parameters">The parameters.</param>
-        IEffectPipelineExecuter CreateExecutor(
-            in IEffectPipelineExecuter parent,
+        EffectPipelineExecuterBase CreateExecutor(
+            in EffectPipelineExecuterBase parent,
             in IEffectParameters parameters);
     }
 }
