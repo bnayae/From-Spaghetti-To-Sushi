@@ -14,14 +14,12 @@ namespace ImageProcessing.Providers
 {
     internal class ImageSharpEffectsProvider : IEffectProviderFactory
     {
-        private readonly Task<ProviderSetting> _settingTask;
         private readonly IMetricReporter _metric;
         private readonly ILogger _logger;
 
         #region Ctor
 
         public ImageSharpEffectsProvider(
-            ISetting setting,
             IMetricReporter metric,
             ILogger logger)
         {
@@ -30,7 +28,6 @@ namespace ImageProcessing.Providers
             cfg.AddImageFormat(new PngFormat());
             cfg.AddImageFormat(new GifFormat());
             cfg.AddImageFormat(new BmpFormat());
-            _settingTask = setting.GetAsync<ProviderSetting>(ProviderSetting.Key);
             _metric = metric;
             _logger = logger;
         }
@@ -164,11 +161,10 @@ namespace ImageProcessing.Providers
             /// <param name="image">The image.</param>
             /// <param name="resize">The resize.</param>
             /// <returns></returns>
-            private static Image<Color> DoResize(Image<Color> image, ResizeEffectParameters resize)
+            private static void DoResize(Image<Color> image, ResizeEffectParameters resize)
             {
                 var size = new Size(resize.Width, resize.Height);
-                image = image.Resize(size);
-                return image;
+                image.Resize(size);
             }
 
             #endregion // DoResize
@@ -180,10 +176,9 @@ namespace ImageProcessing.Providers
             /// </summary>
             /// <param name="image">The image.</param>
             /// <returns></returns>
-            private static Image<Color> DoGrayscale(Image<Color> image, GrayscaleMode mode = GrayscaleMode.Bt601)
+            private static void DoGrayscale(Image<Color> image, GrayscaleMode mode = GrayscaleMode.Bt601)
             {
-                image = image.Grayscale(mode);
-                return image;
+                image.Grayscale(mode);
             }
 
             #endregion // DoGrayscale
@@ -203,40 +198,34 @@ namespace ImageProcessing.Providers
                                         Stream outputStream,
                                         IImmutableList<EffectPipelineExecuterBase> effectExecuters)
             {
-                Image<Color> image = new Image(inputStream);
-
-                foreach (var executer in effectExecuters)
+                using (Image<Color> image = new Image(inputStream))
                 {
-                    Image<Color> tmp = null;
-                    switch (executer.Parameters)
+                    foreach (var executer in effectExecuters)
                     {
-                        case ResizeEffectParameters resize:
-                            {
-                                tmp = DoResize(image, resize);
-                                break;
-                            }
-                        case GrayscaleEffectParameters grayscale:
-                            {
-                                tmp = DoGrayscale(image);
-                                break;
-                            }
-                        case GrayscaleModeEffectParameters grayscale:
-                            {
-                                tmp = DoGrayscale(image, grayscale.Mode);
-                                break;
-                            }
-                        default:
-                            throw new NotImplementedException();
+                        switch (executer.Parameters)
+                        {
+                            case ResizeEffectParameters resize:
+                                {
+                                    DoResize(image, resize);
+                                    break;
+                                }
+                            case GrayscaleEffectParameters grayscale:
+                                {
+                                    DoGrayscale(image);
+                                    break;
+                                }
+                            case GrayscaleModeEffectParameters grayscale:
+                                {
+                                    DoGrayscale(image, grayscale.Mode);
+                                    break;
+                                }
+                            default:
+                                throw new NotImplementedException();
+                        }
+
                     }
-                    if (tmp != null)
-                    {
-                        image.Dispose();
-                        image = tmp;
-                        tmp = null;
-                    }
+                    image.Save(outputStream);
                 }
-                using (image.Save(outputStream)) { }
-                image.Dispose();
 
                 return Task.CompletedTask;
             }
