@@ -15,5 +15,11 @@ namespace ImageProcessing.Contracts
         /// <returns></returns>
         EffectBuilderBase Create(
                         in IEffectParameters parameters);
+        /// <summary>
+        /// Creates builder.
+        /// </summary>
+        /// <param name="parameters">The parameters.</param>
+        /// <returns></returns>
+        EffectBuilderBase Create();
     }
 }
