@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ImageProcessing.Providers
+namespace ImageProcessing.Contracts
 {
     /// <summary>
     /// Setting for the provider
     /// </summary>
-    internal class ProviderSetting
+    public class ProviderSetting
     {
-        public const string Key = "ImageProcessing.Providers.ImageSharp.Setting";
+        public const string Key = "ImageProcessing.Providers.Setting";
 
         #region Ctor
 

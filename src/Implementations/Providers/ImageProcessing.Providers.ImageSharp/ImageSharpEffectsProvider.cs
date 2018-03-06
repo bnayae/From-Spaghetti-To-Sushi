@@ -6,6 +6,7 @@ using Serilog;
 using Setting.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -78,11 +79,12 @@ namespace ImageProcessing.Providers
             switch (parameters)
             {
                 case ResizeEffectParameters p:
-                    return Executer.Create(parent, p, _settingTask, _metric, _logger);
+                    //return new Executer<ResizeEffectParameters>(...)
+                    return Executer.Create(parent, p, _metric, _logger);
                 case GrayscaleEffectParameters p:
-                    return Executer.Create(parent, p, _settingTask, _metric, _logger);
+                    return Executer.Create(parent, p, _metric, _logger);
                 case GrayscaleModeEffectParameters p:
-                    return Executer.Create(parent, p, _settingTask, _metric, _logger);
+                    return Executer.Create(parent, p, _metric, _logger);
                 default:
                     throw new NotImplementedException();
             }
@@ -90,20 +92,17 @@ namespace ImageProcessing.Providers
 
         #endregion // CreateExecutor
 
+        private interface ILocalExecuter
+        {
+        }
+
         #region Executer [nested]
 
         /// <summary>
         /// Factory for IEffectPipelineExecuter implementation
         /// </summary>
-        private abstract class Executer: EffectPipelineExecuterBase
+        private static class Executer
         {
-            public Executer(
-                    IMetricReporter metric,
-                    ILogger logger)
-                :base(metric, logger)
-            {
-
-            }
             #region Create
 
             /// <summary>
@@ -119,7 +118,6 @@ namespace ImageProcessing.Providers
             public static Executer<T> Create<T>(
                                 in EffectPipelineExecuterBase parent,
                                 in T parameters,
-                                in Task<ProviderSetting> settingTask,
                                 IMetricReporter metric,
                                 ILogger logger)
                 where T : IEffectParameters
@@ -127,31 +125,16 @@ namespace ImageProcessing.Providers
                 return new Executer<T>(
                     parent,
                     parameters,
-                    settingTask,
                     metric,
                     logger);
             }
 
             #endregion // Create
-
-            #region DelegateExecutionAsync
-
-            /// <summary>
-            /// Provider internal optimization the specified parent.
-            /// </summary>
-            /// <param name="inputStream">The input stream.</param>
-            /// <returns></returns>
-            public abstract Task<Image<Color>> DelegateExecutionAsync(Stream inputStream);
-
-            #endregion // DelegateExecutionAsync
         }
 
-        private class Executer<T> : Executer
+        private class Executer<T> : EffectPipelineExecuterBase, ILocalExecuter
             where T : IEffectParameters
         {
-            private readonly Task<ProviderSetting> _settingTask;
-            private readonly T _parameters;
-
             #region Ctor
 
             /// <summary>
@@ -165,26 +148,13 @@ namespace ImageProcessing.Providers
             public Executer(
                 in EffectPipelineExecuterBase parent,
                 in T parameters,
-                in Task<ProviderSetting> settingTask,
                 IMetricReporter metric,
                 ILogger logger)
-                :base(metric, logger)
+                : base(parameters, metric, logger, parent)
             {
-                _parameters = parameters;
-                Parent = parent;
-                _settingTask = settingTask;
             }
 
             #endregion // Ctor
-
-            #region Parent
-
-            /// <summary>
-            /// The previous executor (in the pipe-line).
-            /// </summary>
-            public EffectPipelineExecuterBase Parent { get; }
-
-            #endregion // Parent
 
             #region DoResize
 
@@ -218,67 +188,6 @@ namespace ImageProcessing.Providers
 
             #endregion // DoGrayscale
 
-            #region DelegateExecution
-
-            /// <summary>
-            /// Provider internal optimization the specified parent.
-            /// </summary>
-            /// <param name="inputStream">The input stream.</param>
-            /// <returns></returns>
-            public override async Task<Image<Color>> DelegateExecutionAsync(Stream inputStream)
-            {
-                #region Image<Color> image = ...
-
-                Image<Color> image;
-                if (Parent == null)
-                    image = new Image(inputStream);
-                else
-                {
-                    var optimizedParent = Parent as Executer;
-                    if (optimizedParent == null)
-                    {
-                        #region image = await Parent.ExecuteAsync(inputStream, memStream)
-
-                        using (var memStream = new MemoryStream())
-                        {
-                            await Parent.ExecuteAsync(inputStream, memStream);
-                            memStream.Position = 0;
-                            image = new Image(memStream);
-                        }
-
-                        #endregion // image = await Parent.ExecuteAsync(inputStream, memStream)
-                    }
-                    else
-                        image = await optimizedParent.DelegateExecutionAsync(inputStream);
-                }
-
-                #endregion // Image<Color> image = ...
-
-                switch (_parameters)
-                {
-                    case ResizeEffectParameters resize:
-                        {
-                            image = DoResize(image, resize);
-                            break;
-                        }
-                    case GrayscaleEffectParameters grayscale:
-                        {
-                            image = DoGrayscale(image);
-                            break;
-                        }
-                    case GrayscaleModeEffectParameters grayscale:
-                        {
-                            image = DoGrayscale(image, grayscale.Mode);
-                            break;
-                        }
-                    default:
-                        throw new NotImplementedException();
-                }
-                return image;
-            }
-
-            #endregion // DelegateExecution
-
             #region ExecuteAsync
 
             /// <summary>
@@ -289,120 +198,59 @@ namespace ImageProcessing.Providers
             /// <param name="inputStream">The input image stream.</param>
             /// <param name="outputStream">The output image stream.</param>
             /// <returns></returns>
-            protected override async Task OnExecuteAsync(Stream inputStream, Stream outputStream)
+            protected override Task OnExecuteAsync(
+                                        Stream inputStream,
+                                        Stream outputStream,
+                                        IImmutableList<EffectPipelineExecuterBase> effectExecuters)
             {
-                ProviderSetting setting = await _settingTask;
-                if (setting.Optimized)
-                    await ExecuteOptimizedAsync(inputStream, outputStream);
-                else
-                    await ExecuteNoneOptimizedAsync(inputStream, outputStream);
+                Image<Color> image = new Image(inputStream);
+
+                foreach (var executer in effectExecuters)
+                {
+                    Image<Color> tmp = null;
+                    switch (executer.Parameters)
+                    {
+                        case ResizeEffectParameters resize:
+                            {
+                                tmp = DoResize(image, resize);
+                                break;
+                            }
+                        case GrayscaleEffectParameters grayscale:
+                            {
+                                tmp = DoGrayscale(image);
+                                break;
+                            }
+                        case GrayscaleModeEffectParameters grayscale:
+                            {
+                                tmp = DoGrayscale(image, grayscale.Mode);
+                                break;
+                            }
+                        default:
+                            throw new NotImplementedException();
+                    }
+                    if (tmp != null)
+                    {
+                        image.Dispose();
+                        image = tmp;
+                        tmp = null;
+                    }
+                }
+                using (image.Save(outputStream)) { }
+                image.Dispose();
+
+                return Task.CompletedTask;
             }
 
             #endregion // ExecuteAsync
 
-            #region ExecuteOptimizedAsync
+            #region ShouldSkipExecute
 
-            /// <summary>
-            /// Executes the specified image.
-            /// will pass the image to the previous and
-            /// act on the result of the previous pipe.
-            /// </summary>
-            /// <param name="inputStream">The input image stream.</param>
-            /// <param name="outputStream">The output image stream.</param>
-            /// <returns></returns>
-            public async Task ExecuteOptimizedAsync(
-                Stream inputStream,
-                Stream outputStream)
-            {
-                using (Image<Color> maniped = await DelegateExecutionAsync(
-                                                    inputStream))
-                using (maniped.Save(outputStream))
-                {
-                }
-            }
+            protected override bool ShouldSkipExecute(
+                EffectPipelineExecuterBase next) => next is ILocalExecuter;
 
-            #endregion // ExecuteOptimizedAsync
-
-            #region ExecuteNoneOptimizedAsync
-
-            /// <summary>
-            /// Executes the specified image.
-            /// will pass the image to the previous and
-            /// act on the result of the previous pipe.
-            /// </summary>
-            /// <param name="inputStream">The input image stream.</param>
-            /// <param name="outputStream">The output image stream.</param>
-            /// <returns></returns>
-            private async Task ExecuteNoneOptimizedAsync(Stream inputStream, Stream outputStream)
-            {
-                IDisposable disp = EmptyDisposable.Instance;
-
-                #region await Parent.ExecuteAsync(inputStream, afterManipStream); disp = ...
-
-                Stream afterManipStream = null;
-                if (Parent != null)
-                {
-                    afterManipStream = new MemoryStream();
-                    disp = afterManipStream;
-                    // delegate the call to the parent and use it's output as input
-                    await Parent.ExecuteAsync(inputStream, afterManipStream);
-                    afterManipStream.Position = 0;
-                }
-
-                #endregion // await Parent.ExecuteAsync(inputStream, afterManipStream); disp = ...
-
-                using (disp)
-                {
-                    // construct image either from previous stage result or from input
-                    using (var image = new Image(afterManipStream ?? inputStream))
-                    {
-                        switch (_parameters)
-                        {
-                            case ResizeEffectParameters resize:
-                                {
-                                    using (var maniped = DoResize(image, resize))
-                                    using (maniped.Save(outputStream))
-                                    {
-                                    }
-                                }
-                                break;
-                            case GrayscaleEffectParameters grayscale:
-                                {
-                                    using (var maniped = DoGrayscale(image))
-                                    using (maniped.Save(outputStream))
-                                    {
-                                    }
-                                }
-                                break;
-                            case GrayscaleModeEffectParameters grayscale:
-                                {
-                                    using (var maniped = DoGrayscale(image, grayscale.Mode))
-                                    using (maniped.Save(outputStream))
-                                    {
-                                    }
-                                }
-                                break;
-                            default:
-                                throw new NotImplementedException();
-                        }
-                    }
-                }
-            }
-
-            #endregion // ExecuteNoneOptimizedAsync
+            #endregion // ShouldSkipExecute
         }
 
         #endregion // Executer [nested]
-
-        #region EmptyDisposable [nested]
-
-        private class EmptyDisposable : IDisposable
-        {
-            public static IDisposable Instance = new EmptyDisposable();
-            private EmptyDisposable() { }
-            public void Dispose() { }
-        }
-
-        #endregion // EmptyDisposable [nested]
     }
 }

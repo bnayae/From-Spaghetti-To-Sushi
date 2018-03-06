@@ -1,6 +1,7 @@
 ﻿using ImageProcessing.Contracts;
 using Serilog;
 using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -97,18 +98,21 @@ namespace ImageProcessing.Commons
             private class NonEffectPipelineExecuter : EffectPipelineExecuterBase
             {
                 public NonEffectPipelineExecuter()
-                    :base(null, null)
+                    :base(null, null, null, null)
                 {
 
                 }
                 public readonly static EffectPipelineExecuterBase Default = new NonEffectPipelineExecuter();
 
                 protected override Task OnExecuteAsync(
-                    Stream inputStream,
-                    Stream outputStream)
+                                        Stream inputStream,
+                                        Stream outputStream,
+                                        IImmutableList<EffectPipelineExecuterBase> effectExecuters)
                 {
                     return inputStream.CopyToAsync(outputStream);
                 }
+
+                protected override bool ShouldSkipExecute(EffectPipelineExecuterBase next) => false;
             }
 
             #endregion // NonEffectPipelineExecuter [nested]

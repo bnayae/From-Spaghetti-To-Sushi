@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Threading.Tasks;
 using FakeItEasy;
@@ -79,7 +80,8 @@ namespace ImageProcessing.UnitTests
                         (e, p) => _executerResize);
 
             #endregion // CreateExecutor
-            A.CallTo(() => _executerC.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
+            A.CallTo(() => _executerC.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored,
+                                        A<IImmutableList<EffectPipelineExecuterBase>>.Ignored))
                     .ReturnsLazily(() => Task.CompletedTask);
         }
 
@@ -185,17 +187,6 @@ namespace ImageProcessing.UnitTests
                 .MustHaveHappened(Repeated.Exactly.Times(3));
 
             #endregion // CreateExecutor
-
-            #region ExecuteAsync
-
-            A.CallTo(() => _executerA.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
-                .MustHaveHappened(Repeated.Never);
-            A.CallTo(() => _executerB.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
-                .MustHaveHappened(Repeated.Never);
-            A.CallTo(() => _executerC.OnExecuteAsync(A<Stream>.Ignored, A<Stream>.Ignored))
-                .MustHaveHappened(Repeated.Exactly.Once);
-
-            #endregion // ExecuteAsync
         }
 
         #endregion // CheckBasicPipelineAsync

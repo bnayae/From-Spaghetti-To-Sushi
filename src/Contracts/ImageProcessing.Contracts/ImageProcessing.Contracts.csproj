@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <PackageReference Include="Serilog" Version="2.7.1-dev-00960" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0-preview1-26216-02" />
   </ItemGroup>
 
 </Project>
